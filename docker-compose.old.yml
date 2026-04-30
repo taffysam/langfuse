@@ -1,0 +1,135 @@
+services:
+  langfuse-web:
+    image: langfuse/langfuse:3
+    container_name: langfuse-web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: mysecret
+      SALT: mysalt
+
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_AUTH: myredissecret
+
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+      environment:
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      CLICKHOUSE_MIGRATION_URL: clickhouse://default:clickhouse@clickhouse:9000/default
+
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+
+      ENCRYPTION_KEY: f3600949a3d3e77d67d180ac33f5acd50065999bbdf9f9f0f0b7a6263283ce42
+      TELEMETRY_ENABLED: "true"
+      NODE_ENV: production
+
+    depends_on:
+      - postgres
+      - redis
+      - clickhouse
+      - minio
+      - otel-collector
+      - clickhouse-keeper
+
+  langfuse-worker:
+    image: langfuse/langfuse-worker:3
+    container_name: langfuse-worker
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_AUTH: myredissecret
+
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+      CLICKHOUSE_MIGRATION_URL: clickhouse://default:clickhouse@clickhouse:9000/default
+
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+
+      ENCRYPTION_KEY: f3600949a3d3e77d67d180ac33f5acd50065999bbdf9f9f0f0b7a6263283ce42
+      TELEMETRY_ENABLED: "true"
+
+    depends_on:
+      - postgres
+      - redis
+      - clickhouse
+      - minio
+      - clickhouse-keeper
+
+  postgres:
+    image: postgres:17
+    container_name: langfuse-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: langfuse-redis
+    ports:
+      - "6379:6379"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: langfuse-clickhouse
+    depends_on:
+      - clickhouse-keeper
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+
+  clickhouse-keeper:
+    image: clickhouse/clickhouse-keeper:latest
+    container_name: langfuse-clickhouse-keeper
+    ports:
+      - "9181:9181"
+
+  minio:
+    image: minio/minio:latest
+    container_name: langfuse-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    volumes:
+      - minio_data:/data
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: langfuse-otel
+    command: ["--config=/etc/otelcol/config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+volumes:
+  pgdata:
+  minio_data:
+  clickhouse_data:
