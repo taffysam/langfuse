@@ -8,35 +8,17 @@ processors:
   batch:
 
 exporters:
-
-  # 🔹 Langfuse exporter (traces go here)
-  otlphttp/langfuse:
-    endpoint: http://langfuse-web:3000/api/public/otel
-    headers:
-      Authorization: "Basic cGstbGYtNmFkMDAxZWEtNDMzMS00NmM3LWJkMTYtZjM5Nzk2ZGJlNDJkOnNrLWxmLTExZjJlMjBmLTkyZWYtNDBiNS05ZDI5LWFjYzI5MjczMzU0Mg=="
-
-  # 🔹 Splunk Observability exporter (SignalFx ingest)
-  otlphttp/splunk:
-    endpoint: https://ingest.eu0.signalfx.com/v2/trace/otlp
-    headers:
-      X-Sf-Token: "<YOUR_SPLUNK_ACCESS_TOKEN>"
-
-  # 🔹 Debug exporter (replacement for deprecated logging)
   debug:
+    verbosity: detailed
+
+  otlphttp/langfuse:
+    endpoint: "http://langfuse-web:3000/api/public/otel"
+    headers:
+      Authorization: "Basic cGstbGYtNzBlMzljZDUtYzRiYy00MTAxLWFkNzUtMGI3ZDFjZjUxZGI2OnNrLWxmLTA5ZDJlZmIyLWE4MjgtNDQ0My05NGUxLTA0NmNlNDUwOWMzYQ=="
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlphttp/langfuse, otlphttp/splunk, debug]
-
-    metrics:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [otlphttp/splunk, debug]
-
-    logs:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [otlphttp/splunk, debug]
+      exporters: [debug, otlphttp/langfuse]
