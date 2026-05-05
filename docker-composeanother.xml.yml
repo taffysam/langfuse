@@ -1,4 +1,5 @@
 services:
+
   langfuse-web:
     image: langfuse/langfuse:3
     restart: always
@@ -120,7 +121,6 @@ services:
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    container_name: langfuse-otel-collector-1
     restart: always
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:

@@ -6,19 +6,31 @@ receivers:
 
 processors:
   batch:
+  spanmetrics:
 
 exporters:
-  debug:
-    verbosity: detailed
-
-  otlphttp/langfuse:
-    endpoint: "http://langfuse-web:3000/api/public/otel"
+  otlp_http/splunk:
+    traces_endpoint: https://ingest.eu0.signalfx.com/v2/trace/otlp
     headers:
-      Authorization: "Basic cGstbGYtNzBlMzljZDUtYzRiYy00MTAxLWFkNzUtMGI3ZDFjZjUxZGI2OnNrLWxmLTA5ZDJlZmIyLWE4MjgtNDQ0My05NGUxLTA0NmNlNDUwOWMzYQ=="
+      X-Sf-Token: "d4hKeHScdxlGnRZckBM1qA"
+
+  signalfx:
+    access_token: "d4hKeHScdxlGnRZckBM1qA"
+    realm: "eu0"
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
+      processors: [batch, spanmetrics]
+      exporters: [otlp_http/splunk]
+
+    metrics:
+      receivers: [spanmetrics]
       processors: [batch]
-      exporters: [debug, otlphttp/langfuse]
+      exporters: [signalfx]
+    
+
+
+ 
+

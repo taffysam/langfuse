@@ -152,6 +152,24 @@ services:
     volumes:
       - langfuse_postgres_data:/var/lib/postgresql/data
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.151.0
+    container_name: langfuse-otel-collector-1
+    restart: always
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    depends_on:
+      langfuse-web:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      SPLUNK_ACCESS_TOKEN: AyAbbdCZbGmqafFw4v2BjA
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
 volumes:
   langfuse_postgres_data:
     driver: local
