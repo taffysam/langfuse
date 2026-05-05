@@ -1,4 +1,3 @@
-import os
 from openai import OpenAI
 
 from opentelemetry import trace
@@ -16,8 +15,16 @@ OTEL_ENDPOINT = "http://localhost:4318/v1/traces"
 resource = Resource.create({"service.name": SERVICE_NAME})
 provider = TracerProvider(resource=resource)
 
+exporter = OTLPSpanExporter(
+    endpoint=OTEL_ENDPOINT,
+    timeout=30,
+)
+
 processor = BatchSpanProcessor(
-    OTLPSpanExporter(endpoint=OTEL_ENDPOINT)
+    exporter,
+    schedule_delay_millis=500,
+    max_export_batch_size=32,
+    max_queue_size=256,
 )
 
 provider.add_span_processor(processor)
@@ -29,7 +36,7 @@ tracer = trace.get_tracer(__name__)
 # =========================
 client = OpenAI(
     base_url="http://localhost:11434/v1",
-    api_key="ollama"
+    api_key="ollama",
 )
 
 chat_history = []
@@ -93,5 +100,5 @@ if __name__ == "__main__":
             print(f"AI: {result}\n")
 
     finally:
-        provider.force_flush()
+        provider.force_flush(timeout_millis=30000)
         provider.shutdown()
