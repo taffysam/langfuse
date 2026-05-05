@@ -21,7 +21,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch, spanmetrics]
+      processors: [batch]
       exporters: [otlp_http/splunk]
 
    
