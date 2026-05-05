@@ -6,8 +6,7 @@ receivers:
 
 processors:
   batch:
-  spanmetrics:
-
+  
 exporters:
   otlp_http/splunk:
     traces_endpoint: https://ingest.eu0.signalfx.com/v2/trace/otlp
@@ -25,11 +24,8 @@ service:
       processors: [batch, spanmetrics]
       exporters: [otlp_http/splunk]
 
-    metrics:
-      receivers: [spanmetrics]
-      processors: [batch]
-      exporters: [signalfx]
-    
+   
+
 
 
  
