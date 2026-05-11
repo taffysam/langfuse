@@ -8,10 +8,10 @@ receivers:
 
 processors:
   batch:
-  
+
 exporters:
   otlp_http/splunk:
-    traces_endpoint: https://ingest.eu0.signalfx.com/v2/trace/otlp
+    traces_endpoint: "https://ingest.eu0.signalfx.com/v2/trace/otlp"
     headers:
       X-Sf-Token: "d4hKeHScdxlGnRZckBM1qA"
 
@@ -25,6 +25,21 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [otlp_http/splunk]
+
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [signalfx]
+
+
+
+
+
+
+
+
+
+
 
    
 
