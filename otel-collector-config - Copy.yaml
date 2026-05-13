@@ -18,18 +18,13 @@ exporters:
   signalfx:
     access_token: "d4hKeHScdxlGnRZckBM1qA"
     realm: "eu0"
-    
-  otlp_http/langfuse:
-    endpoint: "http://langfuse-web:3000/api/public/otel"
-    headers:
-      Authorization: "cGstbGYtMGYxMTJiNTAtYjY0Mi00N2Q4LTg1NjItYzlkYjdhZWVlNGY3OnNrLWxmLTMxZWMwNzVlLTZlZDctNDg3Yi1iZDQwLTYyNGNkZjM3MWI4NQ=="
-      
+
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp_http/splunk, otlp_http/langfuse]
+      exporters: [otlp_http/splunk]
 
     metrics:
       receivers: [otlp]
