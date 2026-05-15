@@ -13,16 +13,16 @@ exporters:
   otlp_http/splunk:
     traces_endpoint: "https://ingest.eu0.signalfx.com/v2/trace/otlp"
     headers:
-      X-Sf-Token: "d4hKeHScdxlGnRZckBM1qA"
+      X-Sf-Token: "v8zKhs-PiR5Yzttgf4RG6w"
 
   signalfx:
-    access_token: "d4hKeHScdxlGnRZckBM1qA"
+    access_token: "v8zKhs-PiR5Yzttgf4RG6w" 
     realm: "eu0"
     
   otlp_http/langfuse:
     endpoint: "http://langfuse-web:3000/api/public/otel"
     headers:
-      Authorization: "cGstbGYtMGYxMTJiNTAtYjY0Mi00N2Q4LTg1NjItYzlkYjdhZWVlNGY3OnNrLWxmLTMxZWMwNzVlLTZlZDctNDg3Yi1iZDQwLTYyNGNkZjM3MWI4NQ=="
+      Authorization: "cGstbGYtZjY3OTczMzAtMGYwYy00OWRjLWFiODktYjVhZDkwYmIzNTg3OnNrLWxmLTllOGVkM2QxLTdlNDctNGYyYi04ZGM5LWE0NWFmYWY1NjUxZQ=="
       
 service:
   pipelines:

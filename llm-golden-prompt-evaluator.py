@@ -21,6 +21,9 @@ from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExp
 # CONFIG
 # =========================================================
 SERVICE_NAME = "llm-golden-prompt-evaluator"
+APP_NAME = "llm-golden-prompt-evaluator"
+APP_TYPE = "evaluation"
+APP_GROUP = "local-ai-observability"
 
 MODELS = [
     "phi3:mini",
@@ -135,6 +138,9 @@ resource = Resource.create(
         "service.name": SERVICE_NAME,
         "deployment.environment": ENVIRONMENT,
         "tenant": TENANT,
+        "app.group": APP_GROUP,
+        "app.name": APP_NAME,
+        "app.type": APP_TYPE,
     }
 )
 
@@ -212,6 +218,9 @@ def accuracy_callback(options):
                     "llm.model": model,
                     "llm.provider": PROVIDER,
                     "environment": ENVIRONMENT,
+                    "app.group": APP_GROUP,
+                    "app.name": APP_NAME,
+                    "app.type": APP_TYPE,
                 },
             )
         )
@@ -231,6 +240,9 @@ def passed_callback(options):
                     "llm.model": model,
                     "llm.provider": PROVIDER,
                     "environment": ENVIRONMENT,
+                    "app.group": APP_GROUP,
+                    "app.name": APP_NAME,
+                    "app.type": APP_TYPE,
                 },
             )
         )
@@ -250,6 +262,9 @@ def failed_callback(options):
                     "llm.model": model,
                     "llm.provider": PROVIDER,
                     "environment": ENVIRONMENT,
+                    "app.group": APP_GROUP,
+                    "app.name": APP_NAME,
+                    "app.type": APP_TYPE,
                 },
             )
         )
@@ -269,6 +284,9 @@ def total_callback(options):
                     "llm.model": model,
                     "llm.provider": PROVIDER,
                     "environment": ENVIRONMENT,
+                    "app.group": APP_GROUP,
+                    "app.name": APP_NAME,
+                    "app.type": APP_TYPE,
                 },
             )
         )
@@ -409,6 +427,9 @@ def evaluate_model(model: str):
 
         parent_span.set_attribute("llm.model", model)
         parent_span.set_attribute("tenant", TENANT)
+        parent_span.set_attribute("app.group", APP_GROUP)
+        parent_span.set_attribute("app.name", APP_NAME)
+        parent_span.set_attribute("app.type", APP_TYPE)
 
         for index, item in enumerate(GOLDEN_PROMPTS, start=1):
 
@@ -420,11 +441,17 @@ def evaluate_model(model: str):
                 "llm.model": model,
                 "llm.provider": PROVIDER,
                 "environment": ENVIRONMENT,
+                "app.group": APP_GROUP,
+                "app.name": APP_NAME,
+                "app.type": APP_TYPE,
             }
 
             with tracer.start_as_current_span("golden-prompt-test") as span:
 
                 span.set_attribute("llm.model", model)
+                span.set_attribute("app.group", APP_GROUP)
+                span.set_attribute("app.name", APP_NAME)
+                span.set_attribute("app.type", APP_TYPE)
                 span.set_attribute("llm.prompt", prompt)
 
                 start_time = time.perf_counter()
@@ -528,6 +555,8 @@ if __name__ == "__main__":
     print("\n================================================")
     print("Multi-Model Golden Prompt Evaluation")
     print("================================================")
+    print(f"Service: {SERVICE_NAME}")
+    print(f"App Group: {APP_GROUP}")
     print(f"Models: {', '.join(MODELS)}")
     print(f"Interval: {EVAL_INTERVAL_SECONDS} seconds")
     print("Press Ctrl+C to stop.")

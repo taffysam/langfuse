@@ -10,6 +10,9 @@ from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExp
 
 
 SERVICE_NAME = "local-ollama-model-compare"
+APP_NAME = "test-ollama-model-compare"
+APP_TYPE = "model-comparison"
+APP_GROUP = "local-ai-observability"
 TENANT = "demo-tenant"
 PROVIDER = "ollama"
 ENVIRONMENT = "local"
@@ -29,6 +32,9 @@ resource = Resource.create({
     "deployment.environment": ENVIRONMENT,
     "llm.provider": PROVIDER,
     "tenant": TENANT,
+    "app.group": APP_GROUP,
+    "app.name": APP_NAME,
+    "app.type": APP_TYPE,
 })
 
 trace_provider = TracerProvider(resource=resource)
@@ -99,10 +105,16 @@ def ask_model(prompt: str, model: str) -> str:
         "llm.provider": PROVIDER,
         "environment": ENVIRONMENT,
         "service.name": SERVICE_NAME,
+        "app.group": APP_GROUP,
+        "app.name": APP_NAME,
+        "app.type": APP_TYPE,
     }
 
     with tracer.start_as_current_span("ollama-chat-request") as span:
         span.set_attribute("tenant", TENANT)
+        span.set_attribute("app.group", APP_GROUP)
+        span.set_attribute("app.name", APP_NAME)
+        span.set_attribute("app.type", APP_TYPE)
         span.set_attribute("llm.provider", PROVIDER)
         span.set_attribute("llm.model", model)
         span.set_attribute("llm.prompt", prompt)
@@ -170,6 +182,8 @@ def choose_model() -> str:
 
 if __name__ == "__main__":
     print("\nLocal AI Chat - Model Comparison")
+    print(f"Service: {SERVICE_NAME}")
+    print(f"App Group: {APP_GROUP}")
     print("Type your question and press Enter.")
     print("Type 'q' to quit.\n")
 
@@ -189,6 +203,9 @@ if __name__ == "__main__":
             if selected_model == "compare-both":
                 with tracer.start_as_current_span("model-comparison") as parent_span:
                     parent_span.set_attribute("tenant", TENANT)
+                    parent_span.set_attribute("app.group", APP_GROUP)
+                    parent_span.set_attribute("app.name", APP_NAME)
+                    parent_span.set_attribute("app.type", APP_TYPE)
                     parent_span.set_attribute("llm.prompt", user_input)
                     parent_span.set_attribute("comparison.models", ",".join(MODELS))
 

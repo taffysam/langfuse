@@ -19,6 +19,9 @@ from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExp
 # CONFIG
 # =========================
 SERVICE_NAME = "local-ollama-multi-model"
+APP_NAME = "test-ollama-full-observability"
+APP_TYPE = "full-observability"
+APP_GROUP = "local-ai-observability"
 MODELS = ["phi3:mini", "mistral"]
 
 PROVIDER = "ollama"
@@ -55,6 +58,9 @@ resource = Resource.create(
         "deployment.environment": ENVIRONMENT,
         "tenant": TENANT,
         "llm.provider": PROVIDER,
+        "app.group": APP_GROUP,
+        "app.name": APP_NAME,
+        "app.type": APP_TYPE,
     }
 )
 
@@ -229,6 +235,9 @@ def metric_attrs(model: str, status: str = "success", source: str = "interactive
         "llm.provider": PROVIDER,
         "environment": ENVIRONMENT,
         "service.name": SERVICE_NAME,
+        "app.group": APP_GROUP,
+        "app.name": APP_NAME,
+        "app.type": APP_TYPE,
         "status": status,
         "source": source,
     }
@@ -256,6 +265,9 @@ def ask_model(prompt: str, model: str, source: str = "interactive") -> str:
 
     with tracer.start_as_current_span("ollama-chat-request") as span:
         span.set_attribute("tenant", TENANT)
+        span.set_attribute("app.group", APP_GROUP)
+        span.set_attribute("app.name", APP_NAME)
+        span.set_attribute("app.type", APP_TYPE)
         span.set_attribute("source", source)
         span.set_attribute("llm.provider", PROVIDER)
         span.set_attribute("llm.model", model)
@@ -353,10 +365,16 @@ def run_drift_eval_once() -> None:
             "environment": ENVIRONMENT,
             "service.name": SERVICE_NAME,
             "eval.name": "golden_prompt_drift_eval",
+            "app.group": APP_GROUP,
+            "app.name": APP_NAME,
+            "app.type": APP_TYPE,
         }
 
         with tracer.start_as_current_span("llm-drift-eval") as span:
             span.set_attribute("tenant", TENANT)
+            span.set_attribute("app.group", APP_GROUP)
+            span.set_attribute("app.name", APP_NAME)
+            span.set_attribute("app.type", APP_TYPE)
             span.set_attribute("llm.model", model)
             span.set_attribute("eval.name", "golden_prompt_drift_eval")
             span.set_attribute("eval.total", total)
@@ -369,6 +387,9 @@ def run_drift_eval_once() -> None:
 
                 with tracer.start_as_current_span("llm-drift-eval-item") as item_span:
                     item_span.set_attribute("eval.item", index)
+                    item_span.set_attribute("app.group", APP_GROUP)
+                    item_span.set_attribute("app.name", APP_NAME)
+                    item_span.set_attribute("app.type", APP_TYPE)
                     item_span.set_attribute("llm.model", model)
                     item_span.set_attribute("eval.prompt", prompt)
                     item_span.set_attribute(
@@ -436,6 +457,8 @@ def drift_eval_loop() -> None:
 if __name__ == "__main__":
     print("\nLocal AI Chat - Full Splunk Observability")
     print("Includes: traces + token cost + multi-model drift evaluation")
+    print(f"Service: {SERVICE_NAME}")
+    print(f"App Group: {APP_GROUP}")
     print(f"Models: {', '.join(MODELS)}")
     print("Type your question and press Enter.")
     print("Type 'quit', 'exit', or 'q' when you are done.\n")
@@ -460,6 +483,9 @@ if __name__ == "__main__":
 
             with tracer.start_as_current_span("multi-model-interactive-chat") as span:
                 span.set_attribute("tenant", TENANT)
+                span.set_attribute("app.group", APP_GROUP)
+                span.set_attribute("app.name", APP_NAME)
+                span.set_attribute("app.type", APP_TYPE)
                 span.set_attribute("source", "interactive")
                 span.set_attribute("models", ",".join(MODELS))
                 span.set_attribute("llm.prompt", user_input)

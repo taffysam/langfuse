@@ -18,8 +18,9 @@ from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExp
 # =========================
 # CONFIG
 # =========================
-SERVICE_NAME = "local-ollama-phi3"
-MODEL = "phi3:mini"
+SERVICE_NAME = "local-ollama-multi-model"
+MODELS = ["phi3:mini", "mistral"]
+
 PROVIDER = "ollama"
 TENANT = "demo-tenant"
 ENVIRONMENT = "local"
@@ -54,7 +55,6 @@ resource = Resource.create(
         "deployment.environment": ENVIRONMENT,
         "tenant": TENANT,
         "llm.provider": PROVIDER,
-        "llm.model": MODEL,
     }
 )
 
@@ -180,7 +180,10 @@ client = OpenAI(
     api_key="ollama",
 )
 
-chat_history = []
+chat_history_by_model: Dict[str, List[Dict[str, str]]] = {
+    model: [] for model in MODELS
+}
+
 stop_eval = threading.Event()
 
 
@@ -219,10 +222,10 @@ def calculate_cost(prompt_tokens: int, completion_tokens: int):
     return prompt_cost, completion_cost, total_cost
 
 
-def metric_attrs(status: str = "success", source: str = "interactive"):
+def metric_attrs(model: str, status: str = "success", source: str = "interactive"):
     return {
         "tenant": TENANT,
-        "llm.model": MODEL,
+        "llm.model": model,
         "llm.provider": PROVIDER,
         "environment": ENVIRONMENT,
         "service.name": SERVICE_NAME,
@@ -239,30 +242,30 @@ def response_matches_expected(response_text: str, expected_substrings: List[str]
 # =========================
 # LLM CALL WITH TRACE + COST
 # =========================
-def ask_phi3(prompt: str, source: str = "interactive") -> str:
+def ask_model(prompt: str, model: str, source: str = "interactive") -> str:
     temperature = 0
     max_tokens = 100
 
     if source == "interactive":
-        chat_history.append({"role": "user", "content": prompt})
-        messages = chat_history
+        chat_history_by_model[model].append({"role": "user", "content": prompt})
+        messages = chat_history_by_model[model]
     else:
         messages = [{"role": "user", "content": prompt}]
 
-    attrs = metric_attrs(source=source)
+    attrs = metric_attrs(model=model, source=source)
 
     with tracer.start_as_current_span("ollama-chat-request") as span:
         span.set_attribute("tenant", TENANT)
         span.set_attribute("source", source)
         span.set_attribute("llm.provider", PROVIDER)
-        span.set_attribute("llm.model", MODEL)
+        span.set_attribute("llm.model", model)
         span.set_attribute("llm.prompt", prompt)
         span.set_attribute("llm.temperature", temperature)
         span.set_attribute("llm.max_tokens", max_tokens)
 
         try:
             response = client.chat.completions.create(
-                model=MODEL,
+                model=model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
@@ -271,7 +274,9 @@ def ask_phi3(prompt: str, source: str = "interactive") -> str:
             answer = response.choices[0].message.content or ""
 
             if source == "interactive":
-                chat_history.append({"role": "assistant", "content": answer})
+                chat_history_by_model[model].append(
+                    {"role": "assistant", "content": answer}
+                )
 
             prompt_tokens, completion_tokens, total_tokens = get_usage(
                 response=response,
@@ -308,6 +313,7 @@ def ask_phi3(prompt: str, source: str = "interactive") -> str:
             if source == "interactive":
                 print("\nTelemetry emitted:")
                 print(f"  tenant: {TENANT}")
+                print(f"  model: {model}")
                 print(f"  prompt_tokens: {prompt_tokens}")
                 print(f"  completion_tokens: {completion_tokens}")
                 print(f"  total_tokens: {total_tokens}")
@@ -316,7 +322,11 @@ def ask_phi3(prompt: str, source: str = "interactive") -> str:
             return answer
 
         except Exception as e:
-            error_attrs = metric_attrs(status="error", source=source)
+            error_attrs = metric_attrs(
+                model=model,
+                status="error",
+                source=source,
+            )
 
             span.set_attribute("status", "error")
             span.set_attribute("error.type", type(e).__name__)
@@ -331,65 +341,81 @@ def ask_phi3(prompt: str, source: str = "interactive") -> str:
 # DRIFT EVALUATION
 # =========================
 def run_drift_eval_once() -> None:
-    passed = 0
-    failed = 0
-    total = len(GOLDEN_PROMPTS)
+    for model in MODELS:
+        passed = 0
+        failed = 0
+        total = len(GOLDEN_PROMPTS)
 
-    eval_attrs = {
-        "tenant": TENANT,
-        "llm.model": MODEL,
-        "llm.provider": PROVIDER,
-        "environment": ENVIRONMENT,
-        "service.name": SERVICE_NAME,
-        "eval.name": "golden_prompt_drift_eval",
-    }
+        eval_attrs = {
+            "tenant": TENANT,
+            "llm.model": model,
+            "llm.provider": PROVIDER,
+            "environment": ENVIRONMENT,
+            "service.name": SERVICE_NAME,
+            "eval.name": "golden_prompt_drift_eval",
+        }
 
-    with tracer.start_as_current_span("llm-drift-eval") as span:
-        span.set_attribute("tenant", TENANT)
-        span.set_attribute("eval.name", "golden_prompt_drift_eval")
-        span.set_attribute("eval.total", total)
+        with tracer.start_as_current_span("llm-drift-eval") as span:
+            span.set_attribute("tenant", TENANT)
+            span.set_attribute("llm.model", model)
+            span.set_attribute("eval.name", "golden_prompt_drift_eval")
+            span.set_attribute("eval.total", total)
 
-        print("\nRunning drift evaluation...")
+            print(f"\nRunning drift evaluation for {model}...")
 
-        for index, item in enumerate(GOLDEN_PROMPTS, start=1):
-            prompt = item["prompt"]
-            expected = item["expected_substrings"]
+            for index, item in enumerate(GOLDEN_PROMPTS, start=1):
+                prompt = item["prompt"]
+                expected = item["expected_substrings"]
 
-            with tracer.start_as_current_span("llm-drift-eval-item") as item_span:
-                item_span.set_attribute("eval.item", index)
-                item_span.set_attribute("eval.prompt", prompt)
-                item_span.set_attribute("eval.expected_substrings", ",".join(expected))
+                with tracer.start_as_current_span("llm-drift-eval-item") as item_span:
+                    item_span.set_attribute("eval.item", index)
+                    item_span.set_attribute("llm.model", model)
+                    item_span.set_attribute("eval.prompt", prompt)
+                    item_span.set_attribute(
+                        "eval.expected_substrings",
+                        ",".join(expected),
+                    )
 
-                try:
-                    answer = ask_phi3(prompt, source="drift-eval")
-                    is_pass = response_matches_expected(answer, expected)
+                    try:
+                        answer = ask_model(
+                            prompt=prompt,
+                            model=model,
+                            source="drift-eval",
+                        )
 
-                    if is_pass:
-                        passed += 1
-                        item_span.set_attribute("eval.result", "pass")
-                    else:
+                        is_pass = response_matches_expected(answer, expected)
+
+                        if is_pass:
+                            passed += 1
+                            item_span.set_attribute("eval.result", "pass")
+                        else:
+                            failed += 1
+                            item_span.set_attribute("eval.result", "fail")
+
+                    except Exception as e:
                         failed += 1
-                        item_span.set_attribute("eval.result", "fail")
+                        item_span.set_attribute("eval.result", "error")
+                        item_span.set_attribute("error.type", type(e).__name__)
+                        item_span.set_attribute("error.message", str(e))
 
-                except Exception as e:
-                    failed += 1
-                    item_span.set_attribute("eval.result", "error")
-                    item_span.set_attribute("error.type", type(e).__name__)
-                    item_span.set_attribute("error.message", str(e))
+            accuracy = (passed / total) * 100 if total else 0.0
 
-        accuracy = (passed / total) * 100 if total else 0.0
+            span.set_attribute("llm.eval.accuracy", accuracy)
+            span.set_attribute("llm.eval.passed", passed)
+            span.set_attribute("llm.eval.failed", failed)
+            span.set_attribute("llm.eval.total", total)
 
-        span.set_attribute("llm.eval.accuracy", accuracy)
-        span.set_attribute("llm.eval.passed", passed)
-        span.set_attribute("llm.eval.failed", failed)
-        span.set_attribute("llm.eval.total", total)
+            eval_accuracy_counter.add(accuracy, eval_attrs)
+            eval_passed_counter.add(passed, eval_attrs)
+            eval_failed_counter.add(failed, eval_attrs)
+            eval_total_counter.add(total, eval_attrs)
 
-        eval_accuracy_counter.add(accuracy, eval_attrs)
-        eval_passed_counter.add(passed, eval_attrs)
-        eval_failed_counter.add(failed, eval_attrs)
-        eval_total_counter.add(total, eval_attrs)
-
-        print(f"Drift accuracy: {accuracy:.2f}% | Passed={passed} Failed={failed}")
+            print(
+                f"{model} | "
+                f"Accuracy={accuracy:.2f}% | "
+                f"Passed={passed} | "
+                f"Failed={failed}"
+            )
 
 
 def drift_eval_loop() -> None:
@@ -409,7 +435,8 @@ def drift_eval_loop() -> None:
 # =========================
 if __name__ == "__main__":
     print("\nLocal AI Chat - Full Splunk Observability")
-    print("Includes: traces + token cost + drift evaluation")
+    print("Includes: traces + token cost + multi-model drift evaluation")
+    print(f"Models: {', '.join(MODELS)}")
     print("Type your question and press Enter.")
     print("Type 'quit', 'exit', or 'q' when you are done.\n")
 
@@ -431,8 +458,24 @@ if __name__ == "__main__":
                 print("Please type a question, or type 'quit' to exit.\n")
                 continue
 
-            result = ask_phi3(user_input, source="interactive")
-            print(f"AI: {result}\n")
+            with tracer.start_as_current_span("multi-model-interactive-chat") as span:
+                span.set_attribute("tenant", TENANT)
+                span.set_attribute("source", "interactive")
+                span.set_attribute("models", ",".join(MODELS))
+                span.set_attribute("llm.prompt", user_input)
+
+                for model in MODELS:
+                    print("\n==============================")
+                    print(f"MODEL: {model}")
+                    print("==============================")
+
+                    result = ask_model(
+                        prompt=user_input,
+                        model=model,
+                        source="interactive",
+                    )
+
+                    print(f"AI ({model}): {result}\n")
 
     finally:
         print("Stopping drift evaluator...")
