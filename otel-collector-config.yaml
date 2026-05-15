@@ -22,7 +22,7 @@ exporters:
   otlp_http/langfuse:
     endpoint: "http://langfuse-web:3000/api/public/otel"
     headers:
-      Authorization: "cGstbGYtZjY3OTczMzAtMGYwYy00OWRjLWFiODktYjVhZDkwYmIzNTg3OnNrLWxmLTllOGVkM2QxLTdlNDctNGYyYi04ZGM5LWE0NWFmYWY1NjUxZQ=="
+      Authorization: "Basic cGstbGYtZjY3OTczMzAtMGYwYy00OWRjLWFiODktYjVhZDkwYmIzNTg3OnNrLWxmLTllOGVkM2QxLTdlNDctNGYyYi04ZGM5LWE0NWFmYWY1NjUxZQ=="
       
 service:
   pipelines:
