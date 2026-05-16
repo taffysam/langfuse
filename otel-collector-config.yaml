@@ -5,9 +5,17 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
+        
+  docker_stats:
+    endpoint: "unix:///var/run/docker.sock"
+    collection_interval: 10s        
 
 processors:
   batch:
+  
+  resourcedetection:
+    detectors: [system]
+    timeout: 2s
 
 exporters:
   otlp_http/splunk:
@@ -28,12 +36,14 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [batch, resourcedetection ]
       exporters: [otlp_http/splunk, otlp_http/langfuse]
 
     metrics:
-      receivers: [otlp]
-      processors: [batch]
+      receivers:
+        - otlp
+        - docker_stats
+      processors: [batch, resourcedetection]
       exporters: [signalfx]
 
 

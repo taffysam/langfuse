@@ -1,0 +1,11 @@
+{
+  "name": "nodejs-splunk-demo",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node -r @splunk/otel/instrument app.js"
+  },
+  "dependencies": {
+    "@splunk/otel": "latest",
+    "express": "latest"
+  }
+}

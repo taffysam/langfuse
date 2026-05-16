@@ -117,14 +117,40 @@ services:
       mc mb -p local/${LANGFUSE_S3_EVENT_UPLOAD_BUCKET} || true;
       exit 0;
       "
+  
+  nodejs-splunk-demo:
+    build: ./nodejs-splunk-demo
 
+    ports:
+    - "4000:4000"
+
+    environment:
+      OTEL_SERVICE_NAME: nodejs-splunk-demo
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      SPLUNK_METRICS_ENABLED: "true"
+      SPLUNK_AUTOMATIC_LOG_COLLECTION: "true"
+      OTEL_RESOURCE_ATTRIBUTES: >
+        deployment.environment=local,service.version=1.0.0
+        deployment.environment=local,
+        service.version=1.0.0,
+        container.name=nodejs-splunk-demo-1
+        SPLUNK_TRACE_RESPONSE_HEADER_ENABLED=true
+
+    depends_on:
+      - otel-collector
+
+
+  
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
+    user: "0:0"
     container_name: langfuse-otel-collector-1
     restart: always
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol/config.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "4317:4317"
       - "4318:4318"
