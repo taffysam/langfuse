@@ -1,0 +1,65 @@
+MCP Server Build Guide:
+
+Start MCP Server:
+
+cd C:\Users\tafad\Desktop\Splunk\langfuse mcp dev .\observability_mcp_server.py
+
+Arguments:
+"C:\Users\tafad\Desktop\Splunk\langfuse\mcp-server\observability_mcp_server.py"
+
+Cmd:
+C:\Users\tafad\anaconda3\python.exe
+
+
+
+
+
+
+
+
+
+
+mkdir mcp-server
+cd mcp-server
+
+python -m venv .venv
+.venv\Scripts\activate
+
+pip install mcp requests opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp
+
+Check:
+node -v
+npm -v
+npx -v
+
+
+python .\observability_mcp_server.py
+
+
+start MCP inspector: mcp dev .\observability_mcp_server.py
+
+
+For Policy issues:
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+
+
+cd C:\Users\tafad\Desktop\Splunk\langfuse mcp dev .\observability_mcp_server.py
+
+This registers your server locally so MCP-compatible clients can use it.
+mcp install .\observability_mcp_server.py
+
+
+User
+  ↓
+LLM Agent
+  ↓
+MCP Server
+  ↓
+Splunk O11y
+Langfuse
+Docker
+Ollama
+Kubernetes
+AWS
+
