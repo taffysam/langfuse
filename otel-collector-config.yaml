@@ -5,65 +5,103 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
-        
-  docker_stats:
-    endpoint: "unix:///var/run/docker.sock"
-    collection_interval: 30s
-    timeout: 20s
 
 processors:
+  transform/pii_redact:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+
+          # =====================================================
+          # EMAIL REDACTION
+          # =====================================================
+          - replace_pattern(attributes["input.value"], "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "[email-redacted]")
+          - replace_pattern(attributes["output.value"], "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "[email-redacted]")
+
+          - replace_pattern(attributes["llm.prompt.sanitized"], "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "[email-redacted]")
+          - replace_pattern(attributes["llm.response.sanitized"], "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "[email-redacted]")
+
+          # =====================================================
+          # SOUTH AFRICAN ID REDACTION
+          # =====================================================
+          - replace_pattern(attributes["input.value"], "\\b\\d{13}\\b", "[sa-id-redacted]")
+          - replace_pattern(attributes["output.value"], "\\b\\d{13}\\b", "[sa-id-redacted]")
+
+          - replace_pattern(attributes["llm.prompt.sanitized"], "\\b\\d{13}\\b", "[sa-id-redacted]")
+          - replace_pattern(attributes["llm.response.sanitized"], "\\b\\d{13}\\b", "[sa-id-redacted]")
+
+          # =====================================================
+          # PHONE NUMBER REDACTION
+          # =====================================================
+          - replace_pattern(attributes["input.value"], "\\b(?:\\+27|0)[0-9][0-9\\s-]{7,12}\\b", "[phone-redacted]")
+          - replace_pattern(attributes["output.value"], "\\b(?:\\+27|0)[0-9][0-9\\s-]{7,12}\\b", "[phone-redacted]")
+
+          - replace_pattern(attributes["llm.prompt.sanitized"], "\\b(?:\\+27|0)[0-9][0-9\\s-]{7,12}\\b", "[phone-redacted]")
+          - replace_pattern(attributes["llm.response.sanitized"], "\\b(?:\\+27|0)[0-9][0-9\\s-]{7,12}\\b", "[phone-redacted]")
+
+          # =====================================================
+          # PCI / PAYMENT CARD REDACTION
+          # =====================================================
+          - replace_pattern(attributes["input.value"], "\\b(?:\\d[ -]*?){13,19}\\b", "[card-redacted]")
+          - replace_pattern(attributes["output.value"], "\\b(?:\\d[ -]*?){13,19}\\b", "[card-redacted]")
+
+          - replace_pattern(attributes["llm.prompt.sanitized"], "\\b(?:\\d[ -]*?){13,19}\\b", "[card-redacted]")
+          - replace_pattern(attributes["llm.response.sanitized"], "\\b(?:\\d[ -]*?){13,19}\\b", "[card-redacted]")
+
+          # =====================================================
+          # CVV / CVC REDACTION
+          # =====================================================
+          - replace_pattern(attributes["input.value"], "(?i)\\b(cvv|cvc|security code)[:= ]+\\d{3,4}\\b", "[cvv-redacted]")
+          - replace_pattern(attributes["output.value"], "(?i)\\b(cvv|cvc|security code)[:= ]+\\d{3,4}\\b", "[cvv-redacted]")
+
+          - replace_pattern(attributes["llm.prompt.sanitized"], "(?i)\\b(cvv|cvc|security code)[:= ]+\\d{3,4}\\b", "[cvv-redacted]")
+          - replace_pattern(attributes["llm.response.sanitized"], "(?i)\\b(cvv|cvc|security code)[:= ]+\\d{3,4}\\b", "[cvv-redacted]")
+
+          # =====================================================
+          # DEFENSIVE TRUNCATION
+          # =====================================================
+          - set(span.attributes["input.value"], Substring(span.attributes["input.value"], 0, 4000))
+              where span.attributes["input.value"] != nil and Len(span.attributes["input.value"]) > 4000
+
+          - set(span.attributes["output.value"], Substring(span.attributes["output.value"], 0, 4000))
+             where span.attributes["output.value"] != nil and Len(span.attributes["output.value"]) > 4000
+
+          - set(span.attributes["llm.prompt.sanitized"], Substring(span.attributes["llm.prompt.sanitized"], 0, 4000))
+             where span.attributes["llm.prompt.sanitized"] != nil and Len(span.attributes["llm.prompt.sanitized"]) > 4000
+
+          - set(span.attributes["llm.response.sanitized"], Substring(span.attributes["llm.response.sanitized"], 0, 4000))
+             where span.attributes["llm.response.sanitized"] != nil and Len(span.attributes["llm.response.sanitized"]) > 4000
+
   batch:
-  
-  resourcedetection:
-    detectors: [system]
-    timeout: 2s
+    timeout: 30s
+    send_batch_size: 1024
 
 exporters:
   otlp_http/splunk:
     traces_endpoint: "https://ingest.eu0.signalfx.com/v2/trace/otlp"
     headers:
-      X-Sf-Token: "v8zKhs-PiR5Yzttgf4RG6w"
-      
-      
+      X-Sf-Token: "jiui2OR1TR7_wAwRo2q0jg"
 
-  signalfx:
-    access_token: "v8zKhs-PiR5Yzttgf4RG6w" 
-    realm: "eu0"
-    api_url: "https://ingest.eu0.signalfx.com"
-    timeout: 30s
-    
   otlp_http/langfuse:
     endpoint: "http://langfuse-web:3000/api/public/otel"
     headers:
-      Authorization: "Basic cGstbGYtZjY3OTczMzAtMGYwYy00OWRjLWFiODktYjVhZDkwYmIzNTg3OnNrLWxmLTllOGVkM2QxLTdlNDctNGYyYi04ZGM5LWE0NWFmYWY1NjUxZQ=="
-      
+      Authorization: "Basic cGstbGYtNjNhMzdlMDctYTc3MS00NDYxLWJjYTYtMDRhNTgxNDMyYWZjOnNrLWxmLTY3ZmJjODI0LTIwOWItNGMyMy05MzJhLTczYjIyODkyOTk2Yw=="
+
+  signalfx:
+    access_token: "jiui2OR1TR7_wAwRo2q0jg"
+    realm: "eu0"
+    api_url: "https://ingest.eu0.signalfx.com"
+    timeout: 30s
+
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch, resourcedetection]
+      processors: [transform/pii_redact, batch]
       exporters: [otlp_http/splunk, otlp_http/langfuse]
 
     metrics:
-      receivers:
-        - otlp
-        - docker_stats
-      processors: [batch, resourcedetection]
+      receivers: [otlp]
+      processors: [batch]
       exporters: [signalfx]
-
-
-
-
-
-
-
-
-
-
-
-   
-
-
-
- 
-

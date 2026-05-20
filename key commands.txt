@@ -1,0 +1,164 @@
+Go to project folder
+cd C:\Users\tafad\Desktop\Splunk\langfuse
+
+2. Start / stop platform
+docker compose up -d
+docker compose down
+docker compose restart
+docker compose ps
+
+3. Restart only OTEL Collector
+docker compose up -d --force-recreate --no-deps otel-collector
+
+4. Check OTEL Collector logs
+docker logs langfuse-otel-collector-1 --tail 100
+docker logs langfuse-otel-collector-1 --tail 100 | Select-String "error|failed|Dropping|401|403|404|context deadline|server misbehaving|transform|redact"
+
+5. Check if OTEL ports are listening
+netstat -ano | findstr ":4317"
+netstat -ano | findstr ":4318"
+
+6. Test OTEL Collector container status
+docker compose ps otel-collector
+docker inspect langfuse-otel-collector-1 --format="{{.State.Status}}"
+
+7. Check collector mounted config
+docker inspect langfuse-otel-collector-1 | Select-String "/etc/otelcol"
+
+PowerShell-friendly mount check:
+
+docker inspect langfuse-otel-collector-1 --format="{{range .Mounts}}{{println .Source}}{{println .Destination}}{{end}}"
+
+8. Validate Docker Compose
+docker compose config
+
+9. Restart Langfuse
+docker compose restart langfuse-web langfuse-worker
+
+10. Check Langfuse logs
+docker logs langfuse-langfuse-web-1 --tail 100
+docker logs langfuse-langfuse-worker-1 --tail 100
+docker logs langfuse-langfuse-web-1 --tail 100 | Select-String "error|failed|401|403|404|Unauthenticated|zod|clickhouse"
+
+11. Check databases
+docker compose ps postgres redis clickhouse minio
+docker logs langfuse-postgres-1 --tail 50
+docker logs langfuse-clickhouse-1 --tail 50
+docker logs langfuse-redis-1 --tail 50
+docker logs langfuse-minio-1 --tail 50
+
+12. Check Splunk token/auth errors
+docker logs langfuse-otel-collector-1 --tail 200 | Select-String "401|Unauthorized|X-Sf-Token|signalfx|otlp_http/splunk"
+
+13. Check Langfuse OTEL auth errors
+docker logs langfuse-otel-collector-1 --tail 200 | Select-String "langfuse|401|Unauthenticated|Authorization"
+
+14. Generate Langfuse Basic Auth
+$pair = "pk-lf-YOUR_PUBLIC_KEY:sk-lf-YOUR_SECRET_KEY"
+$bytes = [System.Text.Encoding]::UTF8.GetBytes($pair)
+$base64 = [Convert]::ToBase64String($bytes)
+"Basic $base64"
+
+15. Edit key files
+notepad .\otel-collector-config.yaml
+notepad .\docker-compose.yml
+notepad .\.env
+notepad "$env:APPDATA\Claude\claude_desktop_config.json"
+
+16. Run main Python apps
+python .\test-ollama-full-observability-governed-fixed-v2.py
+python .\test-ollama-full-observability-governed-no-drift.py
+python .\test-ollama-splunk-only.py
+python .\test-ollama-model-compare.py
+python .\test-ollama-langfuse.py
+python .\rag_pdf_splunk_otel.py
+python .\llm-golden-prompt-evaluator.py
+
+17. Check Python packages
+pip show opentelemetry-api
+pip show opentelemetry-sdk
+pip show opentelemetry-exporter-otlp
+pip show openai
+pip show langfuse
+pip show mcp
+
+18. Install required Python packages
+pip install openai opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp langfuse mcp
+
+For RAG:
+
+pip install chromadb pypdf langchain langchain-ollama langchain-community
+
+19. Check Ollama
+ollama list
+ollama ps
+ollama pull phi3:mini
+ollama pull mistral
+ollama pull nomic-embed-text
+ollama serve
+
+20. Test Ollama OpenAI-compatible endpoint
+curl http://localhost:11434/v1/models
+
+21. Check if ports are busy
+netstat -ano | findstr ":3000"
+netstat -ano | findstr ":11434"
+netstat -ano | findstr ":4318"
+netstat -ano | findstr ":4317"
+22. Test Langfuse UI
+
+Open:
+
+http://localhost:3000
+23. Test MinIO UI
+
+Open:
+
+http://localhost:9091
+
+24. Check Docker resources
+docker stats
+docker system df
+docker system prune
+
+25. Check all containers
+docker ps
+docker ps -a
+
+26. Check Claude MCP config
+Get-Content "$env:APPDATA\Claude\claude_desktop_config.json" | ConvertFrom-Json
+notepad "$env:APPDATA\Claude\claude_desktop_config.json"
+
+27. Restart Claude Desktop
+taskkill /IM Claude.exe /F
+
+Then reopen Claude Desktop.
+
+
+28. Check MCP node processes
+Get-Process node -ErrorAction SilentlyContinue
+
+29. Check npx path
+where.exe npx
+
+30. Test GitHub MCP manually
+& "C:\Program Files\nodejs\npx.cmd" -y @modelcontextprotocol/server-github
+
+Expected:
+
+GitHub MCP Server running on stdio
+
+Stop with:
+
+Ctrl + C
+31. Test filesystem MCP manually
+& "C:\Program Files\nodejs\npx.cmd" -y @modelcontextprotocol/server-filesystem "C:\Users\tafad\Desktop\Splunk\langfuse"
+32. Test custom observability MCP manually
+C:\Users\tafad\anaconda3\python.exe .\mcp-server\observability_mcp_server.py
+33. Common success check after fixes
+docker compose up -d --force-recreate --no-deps otel-collector
+docker logs langfuse-otel-collector-1 --tail 100 | Select-String "error|failed|Dropping|401|403|404|Len:|Unauthenticated"
+
+You want no 401, no Dropping data, and no Len unsupported target type.
+
+

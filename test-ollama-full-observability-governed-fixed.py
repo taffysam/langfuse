@@ -616,11 +616,6 @@ if __name__ == "__main__":
                     result = ask_model(prompt=user_input, model=model, source="interactive", show_spinner=True)
                     print(f"AI ({model}): {result}\n")
 
-                print("=" * 60)
-                print("All models have completed their responses.")
-                print("You may now enter another question.")
-                print("=" * 60 + "\n")
-
     finally:
         stop_eval.set()
         if trace_provider and meter_provider:

@@ -5,30 +5,50 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
+        
+  docker_stats:
+    endpoint: "unix:///var/run/docker.sock"
+    collection_interval: 30s
+    timeout: 20s
 
 processors:
   batch:
+  
+  resourcedetection:
+    detectors: [system]
+    timeout: 2s
 
 exporters:
   otlp_http/splunk:
     traces_endpoint: "https://ingest.eu0.signalfx.com/v2/trace/otlp"
     headers:
-      X-Sf-Token: "d4hKeHScdxlGnRZckBM1qA"
+      X-Sf-Token: "v8zKhs-PiR5Yzttgf4RG6w"
+      
+      
 
   signalfx:
-    access_token: "d4hKeHScdxlGnRZckBM1qA"
+    access_token: "v8zKhs-PiR5Yzttgf4RG6w" 
     realm: "eu0"
-
+    api_url: "https://ingest.eu0.signalfx.com"
+    timeout: 30s
+    
+  otlp_http/langfuse:
+    endpoint: "http://langfuse-web:3000/api/public/otel"
+    headers:
+      Authorization: "Basic cGstbGYtZjY3OTczMzAtMGYwYy00OWRjLWFiODktYjVhZDkwYmIzNTg3OnNrLWxmLTllOGVkM2QxLTdlNDctNGYyYi04ZGM5LWE0NWFmYWY1NjUxZQ=="
+      
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [otlp_http/splunk]
+      processors: [batch, resourcedetection]
+      exporters: [otlp_http/splunk, otlp_http/langfuse]
 
     metrics:
-      receivers: [otlp]
-      processors: [batch]
+      receivers:
+        - otlp
+        - docker_stats
+      processors: [batch, resourcedetection]
       exporters: [signalfx]
 
 
