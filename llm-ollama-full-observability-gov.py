@@ -323,6 +323,9 @@ def attach_governance_span_attrs(span, model: str, source: str, prompt: str, pii
     span.set_attribute("session.id", session_id)
     span.set_attribute("audit.event_time_utc", datetime.now(timezone.utc).isoformat())
     span.set_attribute("llm.prompt.hash", stable_hash(prompt))
+    # Langfuse expects input.value / output.value for generation display.
+    # Store only sanitized, truncated values; raw prompt is never sent.
+    span.set_attribute("input.value", sanitized_prompt[:4000])
     if SEND_SANITIZED_TEXT_TO_TRACE:
         span.set_attribute("llm.prompt.sanitized", sanitized_prompt[:4000])
 
@@ -437,6 +440,9 @@ def ask_model(prompt: str, model: str, source: str = "interactive", show_spinner
             prompt_cost, completion_cost, total_cost = calculate_cost(prompt_tokens, completion_tokens)
 
             span.set_attribute("llm.response.hash", stable_hash(answer))
+            # Langfuse expects output.value for trace/generation display.
+            # Store only sanitized, truncated output; raw answer is never sent.
+            span.set_attribute("output.value", sanitized_answer[:4000])
             if SEND_SANITIZED_TEXT_TO_TRACE:
                 span.set_attribute("llm.response.sanitized", sanitized_answer[:4000])
             span.set_attribute("llm.prompt.tokens", prompt_tokens)
@@ -606,6 +612,7 @@ if __name__ == "__main__":
                 span.set_attribute("privacy.pii_detected", bool(pii_types))
                 span.set_attribute("privacy.pii_types", ",".join(pii_types) if pii_types else "none")
                 span.set_attribute("llm.prompt.hash", stable_hash(user_input))
+                span.set_attribute("input.value", sanitized_input[:4000])
                 if SEND_SANITIZED_TEXT_TO_TRACE:
                     span.set_attribute("llm.prompt.sanitized", sanitized_input[:4000])
 

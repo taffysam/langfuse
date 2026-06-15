@@ -34,7 +34,7 @@ npx -v
 
 
 python .\observability_mcp_server.py
-
+taskkill /IM Claude.exe /F
 
 start MCP inspector: mcp dev .\observability_mcp_server.py
 
